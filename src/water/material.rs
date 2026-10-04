@@ -36,6 +36,23 @@ pub struct WaterMaterial {
   /// Blend factor between directions: 0 = fully A, 1 = fully B.
   pub wave_blend: f32,
   pub quality: u32,
+  /// Optional distance-to-shore field, used in place of the depth prepass to
+  /// pick between `deep_color`, `shallow_color` and `edge_color`.
+  ///
+  /// One channel, `0..1`, read as `value * shore_range` world units of open
+  /// water between this point and the nearest shore. Sampled at the fragment's
+  /// world `xz` through `shore_rect`; past the rect the distance keeps growing
+  /// with how far outside it the fragment is. Use this when there is no seabed
+  /// for a depth prepass to measure (an island whose ground stops at the
+  /// waterline) or no prepass to measure it with.
+  #[texture(101)]
+  #[sampler(102)]
+  pub shore_map: Option<Handle<Image>>,
+  /// The world-space rectangle `shore_map` covers: `xy` is the minimum `xz`
+  /// corner and `zw` the size.
+  pub shore_rect: Vec4,
+  /// World units represented by a `shore_map` value of `1.0`.
+  pub shore_range: f32,
 }
 
 impl Default for WaterMaterial {
@@ -54,6 +71,9 @@ impl Default for WaterMaterial {
       wave_dir_b: default_dir,
       wave_blend: 1.0,
       quality: 4,
+      shore_map: None,
+      shore_rect: Vec4::new(0.0, 0.0, 1.0, 1.0),
+      shore_range: 1.0,
     }
   }
 }
@@ -61,12 +81,14 @@ impl Default for WaterMaterial {
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct WaterMaterialKey {
   quality: u32,
+  shore_map: bool,
 }
 
 impl From<&WaterMaterial> for WaterMaterialKey {
   fn from(material: &WaterMaterial) -> WaterMaterialKey {
     WaterMaterialKey {
       quality: material.quality,
+      shore_map: material.shore_map.is_some(),
     }
   }
 }
@@ -84,6 +106,8 @@ pub struct WaterMaterialUniform {
   pub wave_blend: f32,
   pub wave_dir_a: Vec2,
   pub wave_dir_b: Vec2,
+  pub shore_rect: Vec4,
+  pub shore_range: f32,
 }
 
 impl AsBindGroupShaderType<WaterMaterialUniform> for WaterMaterial {
@@ -100,6 +124,8 @@ impl AsBindGroupShaderType<WaterMaterialUniform> for WaterMaterial {
       wave_dir_a: self.wave_dir_a,
       wave_dir_b: self.wave_dir_b,
       wave_blend: self.wave_blend,
+      shore_rect: self.shore_rect,
+      shore_range: self.shore_range,
     }
   }
 }
@@ -174,6 +200,9 @@ impl MaterialExtension for WaterMaterial {
     let quality = ShaderDefVal::UInt(String::from("QUALITY"), key.bind_group_data.quality);
     if let Some(fragment) = descriptor.fragment.as_mut() {
       fragment.shader_defs.push(quality.clone());
+      if key.bind_group_data.shore_map {
+        fragment.shader_defs.push("SHORE_MAP".into());
+      }
     }
     descriptor.vertex.shader_defs.push(quality);
     Ok(())
