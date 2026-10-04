@@ -67,6 +67,29 @@ fn fragment(
 
   let deep_color = water_bindings::material.deep_color;
   var water_color = deep_color;
+#ifdef SHORE_MAP
+  {
+    // The same Beer's-law and edge mix as the depth-prepass path below, with
+    // the distance to the shore standing in for the depth of the water.
+    let rect = water_bindings::material.shore_rect;
+    let uv = (w_pos - rect.xy) / rect.zw;
+    // Past the mapped rect the water only gets further from the shore.
+    let outside = length(max(max(rect.xy - w_pos, w_pos - (rect.xy + rect.zw)), vec2<f32>(0.0)));
+    let mapped = textureSampleLevel(water_bindings::shore_map, water_bindings::shore_sampler, uv, 0.0).r;
+    let shore_dist = mapped * water_bindings::material.shore_range + outside;
+
+    let beers_law = exp(-shore_dist * water_bindings::material.clarity);
+    let depth_color = vec4<f32>(
+      mix(deep_color.xyz, water_bindings::material.shallow_color.xyz, beers_law),
+      1.0,
+    );
+    // The edge band breathes with the swell: a crest reaches further up the
+    // beach than a trough, so its foam stands further out.
+    let swell = clamp(height / max(water_bindings::material.amplitude, 1e-4), -1.0, 0.5);
+    let edge_scale = max(water_bindings::material.edge_scale * (1.0 + 0.6 * swell), 1e-3);
+    water_color = mix(water_bindings::material.edge_color, depth_color, smoothstep(0.0, edge_scale, shore_dist));
+  }
+#else
 #ifdef DEPTH_PREPASS
 #ifndef PREPASS_PIPELINE
 #ifndef WEBGL2
@@ -82,6 +105,7 @@ fn fragment(
   let beers_law = exp(-depth_diff_view * water_clarity);
   let depth_color = vec4<f32>(mix(deep_color.xyz, shallow_color.xyz, beers_law), 1.0 - beers_law);
   water_color = mix(edge_color, depth_color, smoothstep(0.0, edge_scale, depth_diff_view));
+#endif
 #endif
 #endif
 #endif

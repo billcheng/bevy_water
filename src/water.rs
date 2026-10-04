@@ -362,6 +362,7 @@ pub fn setup_water(
               wave_dir_b: normalized_dir,
               wave_blend: 1.0,
               quality: settings.water_quality.into(),
+              ..default()
             },
           }));
 
