@@ -157,7 +157,7 @@ fn water_fragment_shader() -> ShaderRef {
 
 #[cfg(not(feature = "embed_shaders"))]
 fn water_fragment_shader() -> ShaderRef {
-  "shaders/water_fragment.wgsl".into()
+  "shaders/water_fragment.wesl".into()
 }
 
 #[cfg(feature = "embed_shaders")]
@@ -167,7 +167,7 @@ fn water_vertex_shader() -> ShaderRef {
 
 #[cfg(not(feature = "embed_shaders"))]
 fn water_vertex_shader() -> ShaderRef {
-  "shaders/water_vertex.wgsl".into()
+  "shaders/water_vertex.wesl".into()
 }
 
 impl MaterialExtension for WaterMaterial {
@@ -197,7 +197,7 @@ impl MaterialExtension for WaterMaterial {
     _layout: &MeshVertexBufferLayoutRef,
     key: MaterialExtensionKey<Self>,
   ) -> Result<(), SpecializedMeshPipelineError> {
-    let quality = ShaderDefVal::UInt(String::from("QUALITY"), key.bind_group_data.quality);
+    let quality = ShaderDefVal::UInt("QUALITY".into(), key.bind_group_data.quality);
     if let Some(fragment) = descriptor.fragment.as_mut() {
       fragment.shader_defs.push(quality.clone());
       if key.bind_group_data.shore_map {
@@ -209,77 +209,37 @@ impl MaterialExtension for WaterMaterial {
   }
 }
 
+/// Embeds one shader as WESL at `embedded://bevy_water/<module>.wesl`.
+///
+/// The `embedded://` path is what gives the shader its WESL module path,
+/// `bevy_water::<module>` (with `/` read as `::`), which is how the shaders
+/// import one another now that `#define_import_path` is gone.
+macro_rules! embed_wesl {
+  ($app:ident, $handle:expr, $module:literal) => {
+    load_internal_asset!(
+      $app,
+      $handle,
+      concat!(env!("CARGO_MANIFEST_DIR"), "/assets/shaders/", $module, ".wesl"),
+      |source, _path| Shader::from_wesl(
+        source,
+        concat!("embedded://bevy_water/", $module, ".wesl")
+      )
+    );
+  };
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct WaterMaterialPlugin;
 
 impl Plugin for WaterMaterialPlugin {
   fn build(&self, app: &mut App) {
-    load_internal_asset!(
-      app,
-      NOISE_FBM_HANDLE,
-      concat!(env!("CARGO_MANIFEST_DIR"), "/assets/shaders/noise/fbm.wgsl"),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      NOISE_RANDOM_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/noise/random.wgsl"
-      ),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      NOISE_VNOISE_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/noise/vnoise.wgsl"
-      ),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      WATER_BINDINGS_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/water_bindings.wgsl"
-      ),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      WATER_FUNCTIONS_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/water_functions.wgsl"
-      ),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      WATER_VERTEX_SHADER_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/water_vertex.wgsl"
-      ),
-      Shader::from_wgsl
-    );
-
-    load_internal_asset!(
-      app,
-      WATER_FRAGMENT_SHADER_HANDLE,
-      concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/assets/shaders/water_fragment.wgsl"
-      ),
-      Shader::from_wgsl
-    );
+    embed_wesl!(app, NOISE_FBM_HANDLE, "noise/fbm");
+    embed_wesl!(app, NOISE_RANDOM_HANDLE, "noise/random");
+    embed_wesl!(app, NOISE_VNOISE_HANDLE, "noise/vnoise");
+    embed_wesl!(app, WATER_BINDINGS_HANDLE, "water_bindings");
+    embed_wesl!(app, WATER_FUNCTIONS_HANDLE, "water_functions");
+    embed_wesl!(app, WATER_VERTEX_SHADER_HANDLE, "water_vertex");
+    embed_wesl!(app, WATER_FRAGMENT_SHADER_HANDLE, "water_fragment");
 
     app
       .add_plugins(MaterialPlugin::<StandardWaterMaterial>::default())
