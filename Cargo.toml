@@ -1,6 +1,6 @@
 [package]
 name = "bevy_water"
-version = "0.18.1"
+version = "0.20.0"
 edition = "2021"
 authors = ["Robert G. Jakabosky <rjakabosky+neopallium@neoawareness.com>"]
 license = "MIT OR Apache-2.0"
@@ -53,7 +53,7 @@ webgl2 = ["bevy/webgl2"]
 webgpu = ["bevy/webgpu"]
 
 [dependencies]
-bevy = { version = "0.19.1", default-features = false, features = [
+bevy = { version = "0.20.0", default-features = false, features = [
   "bevy_asset",
   "bevy_render",
   "bevy_pbr",
@@ -62,4 +62,4 @@ bevy_easings = { version = "0.19", optional = true }
 bevy-inspector-egui = { version = "0.37", optional = true }
 
 [dev-dependencies]
-bevy = { version = "0.19.1", features = ["3d", "free_camera"] }
+bevy = { version = "0.20.0", features = ["3d", "free_camera"] }

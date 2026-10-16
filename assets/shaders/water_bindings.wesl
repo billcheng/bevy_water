@@ -1,5 +1,3 @@
-#define_import_path bevy_water::water_bindings
-
 struct WaterMaterial {
   deep_color: vec4<f32>,
   shallow_color: vec4<f32>,
@@ -16,10 +14,10 @@ struct WaterMaterial {
   shore_range: f32,
 };
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(100)
+@group(constants::MATERIAL_BIND_GROUP) @binding(100)
 var<uniform> material: WaterMaterial;
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(101)
+@group(constants::MATERIAL_BIND_GROUP) @binding(101)
 var shore_map: texture_2d<f32>;
-@group(#{MATERIAL_BIND_GROUP}) @binding(102)
+@group(constants::MATERIAL_BIND_GROUP) @binding(102)
 var shore_sampler: sampler;
